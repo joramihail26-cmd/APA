@@ -1,92 +1,96 @@
 import { api } from '../api.js';
-import { h, toast, icon } from '../ui.js';
-import { decrypt, countUp, tubeLetters } from '../fx/text.js';
-import { magnet } from '../fx/pointer.js';
+import { h, toast, icon, avatar } from '../ui.js';
+import { heroScene } from './home-scene.js';
 
-const pad = (n) => String(n).padStart(2, '0');
+const fmtDate = (d) => new Date(d.replace(' ', 'T') + 'Z').toLocaleDateString('ro-RO', { day: 'numeric', month: 'long' });
 
 export async function render() {
   const [players, games, sessions, stats] = await Promise.all([api.players(), api.games(), api.sessions(), api.stats()]);
-  const active = sessions.filter((s) => s.status === 'active');
   const finished = sessions.filter((s) => s.status === 'finished');
   const ready = players.length >= 4;
 
-  // ---------- attract screen ----------
-  const l1 = h('span', { class: 'line' }); const l2 = h('span', { class: 'line volt' });
-  tubeLetters(l1, 'GAMENIGHT', 120); tubeLetters(l2, 'MASTER', 720);
-  const sign = h('h1', { class: 'sign', 'aria-label': 'GameNight Master' }, l1, l2);
-  const tagline = h('p', { class: 'tagline' });
-
-  const start = h('a', { class: 'btn primary huge', href: ready ? '#/new' : '#/players' },
-    icon('play'), ready ? 'Press start' : 'Adaugă jucători');
-  const demo = !ready && h('button', { class: 'btn', type: 'button', onclick: async (e) => {
+  // ---------- scena de sus: un singur punct de atenție ----------
+  const demo = !ready && h('button', { class: 'btn hero-ghost', type: 'button', onclick: async (e) => {
     e.currentTarget.disabled = true;
     try { const r = await api.demo(); toast(`Am adăugat ${r.added} jucători de probă`); location.hash = '#/players'; }
     catch (err) { toast(err.message, 'error'); e.currentTarget.disabled = false; }
   } }, 'Încarcă 8 jucători de probă');
 
-  const statEl = (n, label) => { const b = h('b', {}, '00'); countUp(b, n, { delay: 900, duration: 1100, format: pad }); return h('span', {}, b, label); };
+  const hero = h('section', { class: 'hero', 'aria-labelledby': 'hero-title' },
+    heroScene(),
+    h('div', { class: 'hero-copy' },
+      h('span', { class: 'hero-badge hero-in', style: { '--i': 0 }, 'aria-hidden': 'true' }, 'GN'),
+      h('h1', { class: 'hero-title hero-in', id: 'hero-title', style: { '--i': 1 } }, 'GameNight Master'),
+      h('p', { class: 'hero-sub hero-in', style: { '--i': 2 } },
+        'Echipe echilibrate la fix, roluri potrivite pentru fiecare și scorul serii. Voi jucați, aplicația face calculele.'),
+      h('div', { class: 'hero-actions hero-in', style: { '--i': 3 } },
+        h('a', { class: 'btn primary huge', href: ready ? '#/new' : '#/players' }, icon('play'), ready ? 'Începe o seară' : 'Adaugă jucători'),
+        demo),
+      h('p', { class: 'hero-meta hero-in', style: { '--i': 4 } },
+        `${players.length} jucători · ${games.length} jocuri · ${finished.length} ${finished.length === 1 ? 'seară jucată' : 'seri jucate'}`,
+        !ready && ' · ai nevoie de cel puțin 4 jucători')));
 
-  const copy = h('div', { class: 'attract-copy' },
-    h('span', { class: 'eyebrow' }, ready ? 'Players ready' : 'Insert coin'),
-    sign, tagline,
-    h('div', { class: 'attract-actions' }, h('span', { class: 'star' }, magnet(start)), demo),
-    h('p', { class: 'attract-stats' }, statEl(players.length, 'jucători'), statEl(games.length, 'jocuri'), statEl(finished.length, 'seri jucate')),
-    !ready && h('p', { class: 'muted small', style: { maxWidth: '46ch' } }, `Pentru echipe ai nevoie de cel puțin 4 jucători. Acum ai ${players.length}.`));
+  // ---------- rândurile de carduri ----------
+  const sessionCards = sessions.map((s) => {
+    const live = s.status === 'active';
+    const done = s.matches.filter((m) => m.done).length;
+    return h('a', { class: 'tile', href: `#/session/${s.id}` },
+      h('div', { class: 'tile-band', style: { '--tc': s.teams[0]?.color || 'var(--neon)' } },
+        h('span', { class: 'tile-emoji', 'aria-hidden': 'true' }, s.game.emoji),
+        h('span', { class: `tile-chip ${live ? 'live' : ''}` }, live ? 'În desfășurare' : 'Încheiată')),
+      h('div', { class: 'tile-body' },
+        h('b', { class: 'tile-name' }, s.game.name),
+        h('span', { class: 'tile-line' }, live ? `${done} din ${s.matches.length} meciuri · ${s.teams.map((t) => t.name).join(' · ')}` : (s.result?.message ?? '')),
+        h('span', { class: 'tile-date' }, fmtDate(s.createdAt))));
+  });
 
-  // HIGH SCORES: clasamentul real sau un tabel demonstrativ, ca bandă pe linia orizontului
-  const top = stats.players.filter((p) => p.played > 0).slice(0, 5);
-  const rows = top.length
-    ? top.map((p, i) => ({ rk: `${i + 1}`, nm: p.name, sc: pad(p.wins) }))
-    : (players.length ? players.slice(0, 5).map((p, i) => ({ rk: `${i + 1}`, nm: p.name, sc: '--' })) : ['ANA', 'MIHAI', 'IOANA', 'VLAD', 'SARA'].map((n, i) => ({ rk: `${i + 1}`, nm: n, sc: '--' })));
-  const set = () => [h('span', { class: 'hs-title' }, 'High scores'),
-    ...rows.map((r) => h('span', {}, h('span', { class: 'k' }, `${r.rk}. `), r.nm, h('b', {}, r.sc)))];
-  // patru copii ale setului: jumătatea animată e mereu mai lată decât ecranul, deci bucla nu lasă goluri
-  const copies = [set(), set(), set(), set()].map((group, i) => group.map((n) => { if (i) n.setAttribute('aria-hidden', 'true'); return n; }));
-  const ticker = h('div', { class: 'ticker', role: 'marquee', 'aria-label': top.length ? 'High scores: victorii în serile încheiate' : 'High scores' },
-    h('div', { class: 'ticker-track' }, copies));
+  const ranked = stats.players.filter((p) => p.played > 0);
+  const colorOf = (name) => players.find((x) => x.name === name)?.color || '#ff49ba';
+  const playerCards = (ranked.length ? ranked : players).slice(0, 12).map((p, i) => {
+    const color = p.color || colorOf(p.name);
+    return h('div', { class: 'tile' },
+      h('div', { class: 'tile-band person', style: { '--tc': color } },
+        avatar({ name: p.name, color }, 'xl'),
+        ranked.length ? h('span', { class: 'tile-rank' }, `#${i + 1}`) : null),
+      h('div', { class: 'tile-body' },
+        h('b', { class: 'tile-name' }, p.name),
+        h('span', { class: 'tile-line' }, ranked.length
+          ? `${p.wins} ${p.wins === 1 ? 'victorie' : 'victorii'} · ${p.played} ${p.played === 1 ? 'seară' : 'seri'}`
+          : 'Încă nicio seară jucată')));
+  });
 
-  const attract = h('section', { class: 'attract', 'aria-label': 'Ecranul de start' },
-    copy, ticker,
-    h('div', { class: 'horizon', 'aria-hidden': 'true' }),
-    h('div', { class: 'floor', 'aria-hidden': 'true' }, h('div', { class: 'floor-grid' })));
+  const gameCards = games.map((g) => h('a', { class: 'tile', href: '#/games' },
+    h('div', { class: 'tile-band game' }, h('span', { class: 'tile-emoji', 'aria-hidden': 'true' }, g.emoji)),
+    h('div', { class: 'tile-body' },
+      h('b', { class: 'tile-name' }, g.name),
+      h('span', { class: 'tile-line' }, `${g.min_players}–${g.max_players} jucători · ${g.duration} min`))));
 
-  decrypt(tagline, 'Echipe echilibrate la fix, roluri potrivite și un scoreboard care se aprinde la fiecare punct.', { delay: 1100, speed: 22, perChar: 2 });
+  const rows = h('div', { class: 'rows' },
+    row('Seri', sessions.length, '#/stats', sessionCards,
+      h('a', { class: 'tile tile-empty', href: ready ? '#/new' : '#/players' }, h('b', {}, 'Nicio seară încă'), h('span', {}, ready ? 'Prima începe de aici.' : 'Adaugă mai întâi jucătorii.'))),
+    row(ranked.length ? 'Clasament' : 'Jucători', ranked.length || players.length, ranked.length ? '#/stats' : '#/players', playerCards,
+      h('a', { class: 'tile tile-empty', href: '#/players' }, h('b', {}, 'Niciun jucător'), h('span', {}, 'Adaugă prietenii care vin la seară.'))),
+    row('Jocuri', games.length, '#/games', gameCards, null));
 
-  // ---------- sub hero ----------
-  const lower = h('div', { class: 'home-lower' });
-  const cont = h('section', { class: 'continue', 'aria-labelledby': 'cont-title' },
-    h('h2', { id: 'cont-title', class: 'label', style: { color: 'var(--neon)' } }, active.length ? 'Continue?' : 'Ultima seară'));
-  if (active.length) {
-    cont.append(...active.map((s) => {
-      const done = s.matches.filter((m) => m.done).length;
-      return h('a', { class: 'panel continue-card', href: `#/session/${s.id}` },
-        h('span', { class: 'emoji', 'aria-hidden': 'true' }, s.game.emoji),
-        h('span', {}, h('b', {}, s.game.name), h('span', { class: 'muted small' }, `${s.teams.map((t) => t.name).join(' · ')} · ${done} din ${s.matches.length} meciuri`)),
-        h('span', { class: 'go', 'aria-hidden': 'true' }, '▶'));
-    }));
-  } else if (finished[0]) {
-    const s = finished[0];
-    cont.append(h('a', { class: 'panel continue-card', href: `#/session/${s.id}` },
-      h('span', { class: 'emoji', 'aria-hidden': 'true' }, s.game.emoji),
-      h('span', {}, h('b', {}, s.game.name), h('span', { class: 'muted small' }, s.result?.message ?? '')),
-      h('span', { class: 'go', 'aria-hidden': 'true' }, '▶')));
-  } else {
-    cont.append(h('p', { class: 'muted' }, 'Nicio seară încă. Prima începe cu PRESS START.'));
-  }
-
-  const how = h('section', { 'aria-labelledby': 'how-title' },
-    h('h2', { id: 'how-title', class: 'label', style: { color: 'var(--neon)', marginBottom: 'var(--s-2)' } }, 'How to play'),
-    h('ol', { class: 'howto' },
-      step('Echipe echilibrate', 'Bitmask DP verifică toate împărțirile și o alege pe cea cu cea mai mică diferență de putere.', '#/new'),
-      step('Reguli stricte', 'Doi prieteni separați sau împreună? Branch and Bound găsește cea mai bună împărțire care le respectă.', '#/new'),
-      step('Roluri', 'Algoritmul ungar pune fiecare jucător pe rolul pe care îl face cel mai bine.', '#/algorithms'),
-      step('Planul serii', 'Rucsacul alege jocurile care încap în timpul vostru și plac cel mai mult.', '#/planner'),
-      step('Meciuri', 'Metoda cercului face ca fiecare echipă să joace cu fiecare, fără suprapuneri.', '#/algorithms'),
-      step('Teste', 'Fiecare algoritm e verificat automat cu o soluție de forță brută.', '#/algorithms')));
-  lower.append(cont, how);
-
-  return h('div', {}, attract, lower);
+  return h('div', { class: 'home' }, hero, rows);
 }
 
-const step = (title, text, href) => h('li', {}, h('div', {}, h('b', {}, h('a', { href }, title)), h('span', { class: 'muted small' }, text)));
+/** Un rând de carduri care se derulează pe orizontală, cu săgeți, ca în referințe. */
+function row(title, count, href, cards, emptyCard) {
+  const track = h('div', { class: 'row-track' }, cards.length ? cards : emptyCard);
+  const prev = h('button', { class: 'icon-btn', type: 'button', 'aria-label': `${title}: înapoi`, onclick: () => track.scrollBy({ left: -track.clientWidth * 0.8, behavior: 'smooth' }) }, icon('left'));
+  const next = h('button', { class: 'icon-btn', type: 'button', 'aria-label': `${title}: înainte`, onclick: () => track.scrollBy({ left: track.clientWidth * 0.8, behavior: 'smooth' }) }, icon('right'));
+  const sync = () => {
+    prev.disabled = track.scrollLeft < 4;
+    next.disabled = track.scrollLeft + track.clientWidth >= track.scrollWidth - 4;
+  };
+  track.addEventListener('scroll', sync, { passive: true });
+  new ResizeObserver(sync).observe(track);
+  return h('section', { class: 'row-block', 'aria-label': title },
+    h('div', { class: 'row-head' },
+      h('h2', {}, title), h('span', { class: 'row-count' }, count),
+      h('span', { class: 'grow' }),
+      h('a', { class: 'row-all', href }, 'Toate'),
+      h('div', { class: 'row-arrows' }, prev, next)),
+    track);
+}

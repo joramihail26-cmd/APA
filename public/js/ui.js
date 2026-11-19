@@ -40,6 +40,8 @@ const ICONS = {
   chip: 'M7 7h10v10H7zM10 3v4M14 3v4M10 17v4M14 17v4M3 10h4M3 14h4M17 10h4M17 14h4',
   plus: 'M12 5v14M5 12h14',
   play: 'M7 4l13 8-13 8z',
+  left: 'M15 18l-6-6 6-6',
+  right: 'M9 18l6-6-6-6',
 };
 export function icon(name) {
   const ns = 'http://www.w3.org/2000/svg';
