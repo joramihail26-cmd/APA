@@ -1,5 +1,5 @@
 import { api } from '../api.js';
-import { h, toast, formToggle } from '../ui.js';
+import { h, formToggle, toast, stagger } from '../ui.js';
 
 const DOCS = [
   { key: 'Kuhn-Munkres', title: 'Kuhn-Munkres', where: 'Atribuirea rolurilor în fiecare echipă',
@@ -17,29 +17,32 @@ const DOCS = [
 export async function render() {
   const list = await api.algorithms();
   const byKey = (k) => list.find((a) => a.name.includes(k));
-  const out = h('div');
+  const out = h('div', { 'aria-live': 'polite' });
   const run = h('button', { class: 'btn primary', type: 'button' }, 'Rulează testele');
 
   run.addEventListener('click', async () => {
     formToggle(run, true);
     try {
       const r = await api.selftest();
-      out.replaceChildren(h('div', { class: 'card stack' },
-        h('h3', {}, r.passed === r.total ? `Toate cele ${r.total} verificări au trecut` : `${r.passed} din ${r.total} verificări au trecut`),
-        h('ul', { class: 'plain' }, r.groups.map((g) => h('li', { class: 'row', style: { padding: '4px 0' } },
-          h('span', { class: g.passed === g.total ? 'good' : 'bad' }, g.passed === g.total ? '✓' : '✗'), h('span', { class: 'grow' }, g.name), h('span', { class: 'muted small' }, `${g.passed}/${g.total}`)))),
-        h('p', { class: 'muted small' }, `Durată ${r.ms} ms. Rezultatele fiecărui algoritm sunt comparate cu o soluție de forță brută pe instanțe aleatoare.`)));
+      const ok = r.passed === r.total;
+      out.replaceChildren(h('div', { class: `panel stack-sm ${ok ? '' : 'hot'}` },
+        h('h3', {}, ok ? `Toate cele ${r.total} verificări au trecut` : `${r.passed} din ${r.total} verificări au trecut`),
+        stagger(h('ul', { class: 'tests' }, r.groups.map((g) => {
+          const pass = g.passed === g.total;
+          return h('li', {}, h('span', { class: `st ${pass ? 'good' : 'bad'}` }, pass ? 'PASS' : 'FAIL'), h('span', {}, g.name), h('span', { class: 'label' }, `${g.passed}/${g.total}`));
+        }))),
+        h('p', { class: 'muted small' }, `Durată ${r.ms} ms. Fiecare algoritm e comparat cu o soluție de forță brută pe instanțe aleatoare.`)));
     } catch (e) { toast(e.message, 'error'); }
     formToggle(run, false);
   });
 
   return h('div', { class: 'stack' },
-    h('div', { class: 'page-head' }, h('div', {}, h('h1', {}, 'Algoritmii din aplicație'), h('p', { class: 'muted' }, 'Toți sunt exacți și rulează pe server la fiecare seară creată.'))),
-    h('div', { class: 'grid cols-2' }, DOCS.map((d) => h('article', { class: 'card stack' },
+    h('div', { class: 'page-head' }, h('div', {}, h('span', { class: 'eyebrow' }, 'How it works'), h('h1', {}, 'Algoritmii'), h('p', { class: 'muted' }, 'Toți sunt exacți și rulează pe server la fiecare seară creată.'))),
+    stagger(h('div', { class: 'algo-list' }, DOCS.map((d) => h('article', { class: 'panel algo stack-sm' },
       h('h3', {}, d.title),
-      h('dl', { class: 'kv' }, h('dt', {}, 'Folosit la'), h('dd', {}, d.where), h('dt', {}, 'Complexitate'), h('dd', {}, byKey(d.key)?.complexity ?? '')),
-      h('p', { class: 'muted' }, d.how)))),
-    h('section', { class: 'card stack' }, h('h2', {}, 'Verificare automată'),
+      h('p', { class: 'row tight' }, h('span', { class: 'chip led' }, d.where), h('span', { class: 'cx' }, byKey(d.key)?.complexity ?? '')),
+      h('p', { class: 'muted' }, d.how))))),
+    h('section', { class: 'panel hot stack-sm' }, h('h2', {}, 'Verificare automată'),
       h('p', { class: 'muted' }, 'Rulează acum bateria de teste pe server. Aceleași teste pornesc și cu comanda ', h('code', {}, 'npm test'), '.'), h('div', {}, run)),
     out);
 }

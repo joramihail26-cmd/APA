@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="ro">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GameNight · direcții vizuale</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Tilt+Neon&family=Handjet:wght@400;700&family=Chakra+Petch:wght@400;600;700&family=Press+Start+2P&family=Atkinson+Hyperlegible:wght@400;700&family=Bungee&family=Bungee+Shade&family=Sixtyfour&family=Saira:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #e9e6ee; color: #1b1722; font: 15px/1.5 "Atkinson Hyperlegible", sans-serif; padding: 32px; }
+  h1.board { font: 800 28px/1.1 Saira, sans-serif; margin: 0 0 4px; }
+  .lede { margin: 0 0 28px; color: #4c4558; }
+  .dir { background: #fbfaf8; border: 1px solid #d6d1dd; border-radius: 6px; padding: 24px; margin-bottom: 32px; }
+  .dir-head { display: flex; gap: 16px; align-items: baseline; flex-wrap: wrap; margin-bottom: 16px; }
+  .dir-head h2 { margin: 0; font: 800 24px Saira, sans-serif; }
+  .tag { font: 600 12px Saira; letter-spacing: .08em; text-transform: uppercase; background: #1b1722; color: #fbfaf8; padding: 3px 8px; border-radius: 3px; }
+  .words { color: #4c4558; font-style: italic; }
+  .src { margin-left: auto; color: #6b6478; font-size: 13px; }
+  .hero { position: relative; aspect-ratio: 1440 / 640; border-radius: 4px; overflow: hidden; }
+  .meta { display: grid; grid-template-columns: 1.2fr 1fr 1.2fr; gap: 20px; margin-top: 18px; }
+  .meta h4 { margin: 0 0 8px; font: 700 12px Saira; letter-spacing: .1em; text-transform: uppercase; color: #6b6478; }
+  .sw { display: flex; flex-wrap: wrap; gap: 6px; }
+  .sw div { width: 74px; font-size: 11px; line-height: 1.3; }
+  .sw i { display: block; height: 34px; border-radius: 3px; margin-bottom: 4px; border: 1px solid rgba(0,0,0,.12); }
+  .light { margin-top: 14px; border-radius: 4px; padding: 18px 22px; display: flex; align-items: center; gap: 22px; }
+  .moment { font-size: 14px; }
+
+  /* ---------- A: Cabinet Neon ---------- */
+  .A .hero { background:
+      radial-gradient(60% 70% at 50% 110%, oklch(0.72 0.25 350 / .35), transparent 70%),
+      oklch(0.17 0.035 300); }
+  .A .floor { position: absolute; left: -20%; right: -20%; bottom: 0; height: 45%; transform: perspective(380px) rotateX(62deg); transform-origin: bottom;
+     background-image: linear-gradient(oklch(0.72 0.25 350 / .7) 2px, transparent 2px), linear-gradient(90deg, oklch(0.72 0.25 350 / .7) 2px, transparent 2px);
+     background-size: 60px 60px; mask-image: linear-gradient(to top, #000 30%, transparent); }
+  .A .scan { position: absolute; inset: 0; background: repeating-linear-gradient(to bottom, rgba(0,0,0,.25) 0 2px, transparent 2px 4px); pointer-events: none; }
+  .A .sign { position: absolute; left: 7%; top: 14%; font: 400 clamp(40px, 8.4vw, 132px)/0.9 "Tilt Neon"; color: oklch(0.97 0.03 350);
+     text-shadow: 0 0 6px oklch(0.72 0.25 350), 0 0 22px oklch(0.72 0.25 350), 0 0 60px oklch(0.72 0.25 350 / .7); letter-spacing: .02em; }
+  .A .sign span { display:block; color: oklch(0.97 0.05 105); text-shadow: 0 0 6px oklch(0.92 0.19 105), 0 0 26px oklch(0.92 0.19 105 / .8); }
+  .A .sub { position: absolute; left: 7.4%; top: 64%; font: 600 clamp(11px,1.3vw,19px) "Chakra Petch"; color: oklch(0.74 0.04 320); max-width: 40%; }
+  .A .press { position: absolute; left: 7.4%; top: 76%; font: 700 clamp(14px,2vw,30px) Handjet; letter-spacing: .25em; color: oklch(0.85 0.22 145); text-shadow: 0 0 12px oklch(0.85 0.22 145 / .8); }
+  .A .led { position: absolute; right: 6%; top: 18%; width: 32%; border: 2px solid oklch(0.72 0.25 350 / .6); padding: 2% 3%; background: oklch(0.13 0.03 300 / .8); }
+  .A .led b { display:flex; justify-content: space-between; font: 700 clamp(14px,2.6vw,40px)/1.15 Handjet; color: oklch(0.92 0.19 105); letter-spacing: .08em; }
+  .A .led b em { font-style: normal; color: oklch(0.96 0.012 330); }
+  .A .led small { display:block; font: 700 clamp(9px,1vw,14px) Handjet; letter-spacing: .3em; color: oklch(0.72 0.25 350); margin-bottom: 4px; }
+  .A .light { background: oklch(0.96 0.02 340); color: oklch(0.22 0.05 300); }
+  .A .light .t { font: 400 34px "Tilt Neon"; color: oklch(0.52 0.24 350); }
+  .A .light .btn { font: 700 18px Handjet; letter-spacing: .2em; background: oklch(0.52 0.24 350); color: oklch(0.985 0.01 340); padding: 8px 16px; }
+
+  /* ---------- B: Pixel Cartridge ---------- */
+  .B .hero { background: oklch(0.91 0.012 85); image-rendering: pixelated; }
+  .B .frame { position: absolute; inset: 6% 5%; background: oklch(0.2 0.012 270); box-shadow: 0 0 0 8px oklch(0.2 0.012 270), 8px 8px 0 8px oklch(0.52 0.21 27); }
+  .B .title { position: absolute; left: 10%; top: 17%; font: 400 clamp(22px,4.4vw,68px)/1.25 "Press Start 2P"; color: oklch(0.94 0.01 85); }
+  .B .title span { color: oklch(0.68 0.2 27); }
+  .B .sub { position: absolute; left: 10%; top: 52%; font: 400 clamp(11px,1.3vw,19px)/1.5 "Atkinson Hyperlegible"; color: oklch(0.8 0.01 85); max-width: 42%; }
+  .B .start { position: absolute; left: 10%; top: 72%; font: 400 clamp(10px,1.3vw,20px) "Press Start 2P"; background: oklch(0.52 0.21 27); color: oklch(0.985 0.005 85); padding: 1.2% 2%; box-shadow: 4px 4px 0 oklch(0.94 0.01 85); }
+  .B .sprites { position: absolute; right: 9%; top: 22%; display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; width: 30%; }
+  .B .sprites i { aspect-ratio: 1; background:
+     linear-gradient(var(--c) 0 0) 30% 10%/40% 30% no-repeat,
+     linear-gradient(var(--c) 0 0) 15% 55%/70% 30% no-repeat,
+     linear-gradient(var(--c) 0 0) 20% 95%/20% 15% no-repeat,
+     linear-gradient(var(--c) 0 0) 80% 95%/20% 15% no-repeat; }
+  .B .vs { position: absolute; right: 18%; top: 62%; font: 400 clamp(18px,3vw,46px) "Press Start 2P"; color: oklch(0.86 0.17 95); }
+  .B .light { background: oklch(0.2 0.012 270); color: oklch(0.94 0.01 85); }
+  .B .light .t { font: 400 18px "Press Start 2P"; color: oklch(0.7 0.15 250); }
+  .B .light .btn { font: 400 12px "Press Start 2P"; background: oklch(0.68 0.2 27); color: oklch(0.2 0.012 270); padding: 10px 14px; box-shadow: 4px 4px 0 oklch(0.94 0.01 85); }
+
+  /* ---------- C: Sunset Grid ---------- */
+  .C .hero { background: linear-gradient(oklch(0.2 0.06 285), oklch(0.3 0.11 320) 62%, oklch(0.2 0.06 285) 62.2%); }
+  .C .sun { position: absolute; left: 50%; top: 14%; width: 34%; aspect-ratio: 1; transform: translateX(-50%); border-radius: 50%;
+     background: linear-gradient(oklch(0.86 0.15 80), oklch(0.72 0.21 5));
+     mask-image: linear-gradient(#000 52%, transparent 52% 56%, #000 56% 64%, transparent 64% 67%, #000 67% 74%, transparent 74% 78%, #000 78% 84%, transparent 84% 89%, #000 89%); }
+  .C .grid { position: absolute; left: -30%; right: -30%; bottom: 0; height: 38%; transform: perspective(300px) rotateX(58deg); transform-origin: bottom;
+     background-image: linear-gradient(oklch(0.72 0.21 5) 2px, transparent 2px), linear-gradient(90deg, oklch(0.72 0.21 5) 2px, transparent 2px); background-size: 70px 50px; }
+  .C .title { position: absolute; inset: 40% 0 auto; text-align: center; font: 400 clamp(36px,7.6vw,118px)/1 "Bungee Shade"; color: oklch(0.95 0.02 60); }
+  .C .sub { position: absolute; inset: 64% 0 auto; text-align: center; font: 600 clamp(11px,1.3vw,19px) Saira; color: oklch(0.95 0.02 60); }
+  .C .score { position: absolute; left: 4%; top: 6%; font: 400 clamp(12px,1.6vw,24px) Sixtyfour; color: oklch(0.8 0.16 60); }
+  .C .score.r { left: auto; right: 4%; color: oklch(0.72 0.21 5); }
+  .C .light { background: oklch(0.95 0.03 55); color: oklch(0.25 0.07 285); }
+  .C .light .t { font: 400 30px Bungee; color: oklch(0.55 0.21 5); }
+  .C .light .btn { font: 400 15px Bungee; background: oklch(0.25 0.07 285); color: oklch(0.95 0.03 55); padding: 8px 16px; }
+</style>
+</head>
+<body>
+  <h1 class="board">GameNight Master: trei direcții arcade</h1>
+  <p class="lede">Fiecare are temă închisă (sus) și deschisă (banda de jos), lucrate la același nivel. Contrastul e măsurat pentru text pe fundal. Alegi una, le amesteci sau le respingi.</p>
+
+  <section class="dir A">
+    <div class="dir-head"><span class="tag">A</span><h2>Cabinet Neon</h2><span class="words">electric · nocturn · zgomotos</span><span class="src">Sursă: Impeccable, design direction</span></div>
+    <div class="hero">
+      <div class="floor"></div>
+      <div class="sign">GAMENIGHT<span>MASTER</span></div>
+      <p class="sub">Echipe echilibrate la fix, roluri potrivite și un scoreboard care se aprinde la fiecare punct.</p>
+      <div class="press">▶ PRESS START</div>
+      <div class="led"><small>HIGH SCORES</small><b>1 ANA <em>21</em></b><b>2 MIHAI <em>18</em></b><b>3 IOANA <em>15</em></b></div>
+      <div class="scan"></div>
+    </div>
+    <div class="light"><span class="t">Seară nouă</span><span>Tema deschisă: hârtie roz ca o carte de instrucțiuni de automat, neon devenit cerneală.</span><span class="btn">PRESS START</span></div>
+    <div class="meta">
+      <div><h4>Tipografie</h4><div style="font:400 40px 'Tilt Neon'">Tilt Neon: titluri</div><div style="font:700 30px Handjet;letter-spacing:.1em">HANDJET 0123: scoruri LED</div><div style="font:400 16px 'Chakra Petch'">Chakra Petch: textul de lucru, formulare, tabele. Șoseta țâșnește.</div></div>
+      <div><h4>Paletă · contrast pe fundal</h4><div class="sw">
+        <div><i style="background:#120c1c"></i>fundal</div><div><i style="background:#f7eff6"></i>text 17.0</div><div><i style="background:#ff49ba"></i>magenta 6.3</div><div><i style="background:#f8ea21"></i>galben 15.4</div><div><i style="background:#5af169"></i>verde 13.1</div><div><i style="background:#fcedf6"></i>deschis</div><div><i style="background:#c1007c"></i>magenta 5.2</div></div></div>
+      <div class="moment"><h4>Moment-semnătură</h4>Attract screen: firma de neon se aprinde tub cu tub, cu pâlpâiri, podeaua se mișcă spre tine, iar tabelul HIGH SCORES derulează clasamentul real.</div>
+    </div>
+  </section>
+
+  <section class="dir B">
+    <div class="dir-head"><span class="tag">B</span><h2>Pixel Cartridge</h2><span class="words">8-bit · jucăuș · tactil</span><span class="src">Sursă: ui-ux-pro-max (Pixel Art, roșu/albastru)</span></div>
+    <div class="hero">
+      <div class="frame"></div>
+      <div class="title">GAME<span>NIGHT</span><br>MASTER</div>
+      <p class="sub">Echipe echilibrate la fix, roluri potrivite și un scoreboard care se aprinde la fiecare punct.</p>
+      <div class="start">PRESS START</div>
+      <div class="sprites"><i style="--c:oklch(0.68 0.2 27)"></i><i style="--c:oklch(0.7 0.15 250)"></i><i style="--c:oklch(0.86 0.17 95)"></i><i style="--c:oklch(0.75 0.17 150)"></i><i style="--c:oklch(0.7 0.15 250)"></i><i style="--c:oklch(0.68 0.2 27)"></i><i style="--c:oklch(0.75 0.17 150)"></i><i style="--c:oklch(0.86 0.17 95)"></i></div>
+      <div class="vs">VS</div>
+    </div>
+    <div class="light"><span class="t">SEARĂ NOUĂ</span><span>Tema închisă: cartușul negru; tema deschisă (hero-ul de sus) e carcasa gri a consolei.</span><span class="btn">START</span></div>
+    <div class="meta">
+      <div><h4>Tipografie</h4><div style="font:400 22px 'Press Start 2P';line-height:1.5">PRESS START 2P</div><div style="font:400 16px 'Atkinson Hyperlegible'">Atkinson Hyperlegible: textul de lucru, formulare, tabele. Șoseta țâșnește.</div></div>
+      <div><h4>Paletă · contrast pe fundal</h4><div class="sw">
+        <div><i style="background:#e5e1d9"></i>consolă</div><div><i style="background:#171a24"></i>text 13.3</div><div><i style="background:#c50516"></i>roșu 4.7</div><div><i style="background:#114cbf"></i>albastru 5.7</div><div><i style="background:#14161c"></i>cartuș</div><div><i style="background:#fc5950"></i>roșu 5.7</div><div><i style="background:#4ba3f7"></i>albastru 6.8</div></div></div>
+      <div class="moment"><h4>Moment-semnătură</h4>Fiecare jucător devine un sprite pixelat în culoarea lui. La ecranul VS spritele sar în echipe, iar la final câștigătorii fac un dans de victorie în 4 cadre.</div>
+    </div>
+  </section>
+
+  <section class="dir C">
+    <div class="dir-head"><span class="tag">C</span><h2>Sunset Grid</h2><span class="words">cinematic · fierbinte · anii '80</span><span class="src">Sursă: variație proprie (synthwave)</span></div>
+    <div class="hero">
+      <div class="sun"></div><div class="grid"></div>
+      <div class="score">1P 000210</div><div class="score r">HI 009980</div>
+      <div class="title">GAMENIGHT</div>
+      <p class="sub">Echipe echilibrate la fix, roluri potrivite și un scoreboard care se aprinde la fiecare punct.</p>
+    </div>
+    <div class="light"><span class="t">Seară nouă</span><span>Tema deschisă: amurg piersică, cerneală indigo, soarele rămâne.</span><span class="btn">START</span></div>
+    <div class="meta">
+      <div><h4>Tipografie</h4><div style="font:400 34px Bungee">BUNGEE: TITLURI</div><div style="font:400 20px Sixtyfour">SIXTYFOUR 0123</div><div style="font:400 16px Saira">Saira: textul de lucru, formulare, tabele. Șoseta țâșnește.</div></div>
+      <div><h4>Paletă · contrast pe fundal</h4><div class="sw">
+        <div><i style="background:#141030"></i>fundal</div><div><i style="background:#f9ece1"></i>text 15.8</div><div><i style="background:#ffa242"></i>portocaliu 9.1</div><div><i style="background:#ff5d93"></i>roz 6.3</div><div><i style="background:#ffeadc"></i>deschis</div><div><i style="background:#cb1861"></i>roz 4.7</div><div><i style="background:#9f4500"></i>chihlimbar 5.4</div></div></div>
+      <div class="moment"><h4>Moment-semnătură</h4>Soarele în dungi răsare pe Acasă, grila curge spre tine; la HIGH SCORE soarele apune în spatele numelui câștigătorului.</div>
+    </div>
+  </section>
+</body>
+</html>
