@@ -2,7 +2,6 @@ import { api } from '../api.js';
 import { h, toast, icon } from '../ui.js';
 import { decrypt, countUp, tubeLetters } from '../fx/text.js';
 import { magnet } from '../fx/pointer.js';
-import { reduced } from '../fx/motion.js';
 
 const pad = (n) => String(n).padStart(2, '0');
 
@@ -35,38 +34,23 @@ export async function render() {
     h('p', { class: 'attract-stats' }, statEl(players.length, 'jucători'), statEl(games.length, 'jocuri'), statEl(finished.length, 'seri jucate')),
     !ready && h('p', { class: 'muted small', style: { maxWidth: '46ch' } }, `Pentru echipe ai nevoie de cel puțin 4 jucători. Acum ai ${players.length}.`));
 
-  // tabela HIGH SCORES: clasamentul real sau un tabel demonstrativ
+  // HIGH SCORES: clasamentul real sau un tabel demonstrativ, ca bandă pe linia orizontului
   const top = stats.players.filter((p) => p.played > 0).slice(0, 5);
   const rows = top.length
     ? top.map((p, i) => ({ rk: `${i + 1}`, nm: p.name, sc: pad(p.wins) }))
     : (players.length ? players.slice(0, 5).map((p, i) => ({ rk: `${i + 1}`, nm: p.name, sc: '--' })) : ['ANA', 'MIHAI', 'IOANA', 'VLAD', 'SARA'].map((n, i) => ({ rk: `${i + 1}`, nm: n, sc: '--' })));
-  const list = h('ol', { class: 'hs-rows' }, rows.map((r) => h('li', { class: 'hs-row' }, h('span', { class: 'rk' }, r.rk), h('span', { class: 'nm' }, r.nm), h('span', { class: 'sc' }, r.sc))));
-  const cab = h('section', { class: 'hiscore', 'aria-labelledby': 'hs-title' },
-    h('div', { class: 'panel hot hiscore-cab' },
-      h('h2', { id: 'hs-title' }, 'High scores'),
-      list,
-      h('p', { class: 'hs-foot' }, top.length ? 'Victorii în serile încheiate' : 'Încă nu s-a jucat nicio seară', ' ', h('span', { class: 'blink', 'aria-hidden': 'true' }, '▮'))));
-
-  // ticker pe telefon (aceleași date, o singură bandă)
-  const items = rows.map((r) => h('span', {}, h('span', { class: 'k' }, `${r.rk}. `), r.nm, h('b', {}, r.sc)));
-  const ticker = h('div', { class: 'ticker', role: 'marquee', 'aria-label': 'High scores' },
-    h('div', { class: 'ticker-track' }, items, items.map((n) => { const c = n.cloneNode(true); c.setAttribute('aria-hidden', 'true'); return c; })));
+  const set = () => [h('span', { class: 'hs-title' }, 'High scores'),
+    ...rows.map((r) => h('span', {}, h('span', { class: 'k' }, `${r.rk}. `), r.nm, h('b', {}, r.sc)))];
+  // patru copii ale setului: jumătatea animată e mereu mai lată decât ecranul, deci bucla nu lasă goluri
+  const copies = [set(), set(), set(), set()].map((group, i) => group.map((n) => { if (i) n.setAttribute('aria-hidden', 'true'); return n; }));
+  const ticker = h('div', { class: 'ticker', role: 'marquee', 'aria-label': top.length ? 'High scores: victorii în serile încheiate' : 'High scores' },
+    h('div', { class: 'ticker-track' }, copies));
 
   const attract = h('section', { class: 'attract', 'aria-label': 'Ecranul de start' },
-    copy, cab,
+    copy, ticker,
     h('div', { class: 'horizon', 'aria-hidden': 'true' }),
     h('div', { class: 'floor', 'aria-hidden': 'true' }, h('div', { class: 'floor-grid' })));
 
-  // cursorul care trece prin tabela HIGH SCORES, ca la automatele în modul demo
-  if (!reduced()) {
-    let i = 0;
-    const lis = [...list.children];
-    const timer = setInterval(() => {
-      if (!list.isConnected) { clearInterval(timer); return; }
-      lis.forEach((li, k) => li.classList.toggle('cursor', k === i));
-      i = (i + 1) % lis.length;
-    }, 1400);
-  }
   decrypt(tagline, 'Echipe echilibrate la fix, roluri potrivite și un scoreboard care se aprinde la fiecare punct.', { delay: 1100, speed: 22, perChar: 2 });
 
   // ---------- sub hero ----------
@@ -102,7 +86,7 @@ export async function render() {
       step('Teste', 'Fiecare algoritm e verificat automat cu o soluție de forță brută.', '#/algorithms')));
   lower.append(cont, how);
 
-  return h('div', {}, attract, ticker, lower);
+  return h('div', {}, attract, lower);
 }
 
 const step = (title, text, href) => h('li', {}, h('div', {}, h('b', {}, h('a', { href }, title)), h('span', { class: 'muted small' }, text)));
