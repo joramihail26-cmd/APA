@@ -1,0 +1,19 @@
+{
+  "name": "gamenight-master",
+  "version": "1.0.0",
+  "description": "Aplicație pentru organizarea serilor de jocuri: echipe echilibrate, roluri, restricții și scor",
+  "main": "server.js",
+  "scripts": {
+    "start": "node --disable-warning=ExperimentalWarning server.js",
+    "test": "node --test tests/algorithms.test.js tests/api.test.js",
+    "bench": "node tests/bench.js"
+  },
+  "engines": {
+    "node": ">=22.13"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "compression": "^1.8.0",
+    "express": "^5.1.0"
+  }
+}
