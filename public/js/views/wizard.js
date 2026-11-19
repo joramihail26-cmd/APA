@@ -1,8 +1,11 @@
 import { api } from '../api.js';
-import { h, clear, avatar, empty, toast, segmented, LEVELS, stars, formToggle } from '../ui.js';
+import { h, clear, avatar, empty, toast, segmented, LEVELS, pips, formToggle, icon, stagger } from '../ui.js';
+import { cartridge } from './games.js';
+import { countUp } from '../fx/text.js';
 
 // Starea asistentului rămâne între pagini, ca să nu se piardă alegerile la o navigare accidentală.
 const draft = { step: 1, playerIds: new Set(), gameId: null, teamCount: 2, rules: [], cycles: 1, proposal: null, names: [] };
+const STAGES = ['Jucători', 'Joc și niveluri', 'Echipe și reguli', 'VS'];
 
 export function preset({ playerIds, gameId }) {
   draft.playerIds = new Set(playerIds);
@@ -15,31 +18,33 @@ export function preset({ playerIds, gameId }) {
 
 export async function render() {
   const [players, games] = await Promise.all([api.players(), api.games()]);
-  // curăță alegeri care nu mai există
   const known = new Set(players.map((p) => p.id));
   draft.playerIds = new Set([...draft.playerIds].filter((id) => known.has(id)));
   if (draft.gameId && !games.some((g) => g.id === draft.gameId)) draft.gameId = null;
 
   const root = h('div', { class: 'stack' });
-  const body = h('div');
-  const stepsBar = h('div', { class: 'steps', role: 'list' });
-  root.append(h('div', { class: 'page-head' }, h('div', {}, h('h1', {}, 'Seară nouă'), h('p', { class: 'muted' }, 'Patru pași până la prima rundă.'))), stepsBar, body);
+  const body = h('div', { class: 'stack' });
+  const stagesBar = h('ol', { class: 'stages', style: { listStyle: 'none', margin: 0 } });
+  const title = h('h1', {});
+  root.append(h('div', { class: 'page-head' }, h('div', {}, h('span', { class: 'eyebrow' }, 'Seară nouă'), title)), stagesBar, body);
 
   const go = (n) => { draft.step = n; draw(); window.scrollTo(0, 0); };
   const selected = () => players.filter((p) => draft.playerIds.has(p.id));
   const game = () => games.find((g) => g.id === draft.gameId);
   const invalidate = () => { draft.proposal = null; };
 
-  function drawSteps() {
-    clear(stepsBar);
-    ['Jucători', 'Joc și niveluri', 'Echipe și reguli', 'Rezultat'].forEach((t, i) => {
+  function drawStages() {
+    clear(stagesBar);
+    STAGES.forEach((t, i) => {
       const n = i + 1;
-      stepsBar.append(h('div', { class: `step ${draft.step === n ? 'on' : ''} ${draft.step > n ? 'done' : ''}`, role: 'listitem', 'aria-current': draft.step === n ? 'step' : false }, h('i', {}, draft.step > n ? '✓' : n), t));
+      stagesBar.append(h('li', { class: `stage ${draft.step === n ? 'on' : ''} ${draft.step > n ? 'done' : ''}`, 'aria-current': draft.step === n ? 'step' : false },
+        h('span', { class: 'label' }, draft.step > n ? `Stage ${n} ✓` : `Stage ${n}`), h('b', {}, t)));
     });
+    title.textContent = ['', 'Cine joacă?', 'Ce jucați?', 'Echipe și reguli', 'Echipele sunt gata'][draft.step];
   }
 
   function draw() {
-    drawSteps();
+    drawStages();
     clear(body);
     if (!players.length) {
       body.append(empty('👥', 'Nu ai jucători', 'Adaugă mai întâi prietenii care vin la seară.', h('a', { class: 'btn primary', href: '#/players' }, 'Mergi la jucători')));
@@ -48,77 +53,87 @@ export async function render() {
     [null, step1, step2, step3, step4][draft.step]();
   }
 
-  // ---------- pasul 1 ----------
+  // ---------- STAGE 1: character select ----------
   function step1() {
-    const count = h('b', {}, draft.playerIds.size);
-    const list = h('div', { class: 'row' });
-    const next = h('button', { class: 'btn primary', type: 'button', onclick: () => go(2) }, 'Continuă');
-    const sync = () => { count.textContent = draft.playerIds.size; next.disabled = draft.playerIds.size < 2; };
-    const drawList = () => {
-      clear(list);
+    const count = h('b', { class: 'time-out', style: { fontSize: '1.5rem' } }, draft.playerIds.size);
+    const grid = h('div', { class: 'select-grid' });
+    const next = h('button', { class: 'btn primary', type: 'button', onclick: () => go(2) }, 'Continuă', icon('play'));
+    const hint = h('span', { class: 'muted small' });
+    const sync = () => {
+      count.textContent = String(draft.playerIds.size).padStart(2, '0');
+      const ok = draft.playerIds.size >= 2;
+      next.disabled = !ok;
+      hint.textContent = ok ? (draft.playerIds.size < 4 ? 'Pentru jocuri în echipe sunt potriviți 4 sau mai mulți.' : '') : 'Alege cel puțin 2 jucători.';
+    };
+    const order = () => [...draft.playerIds];
+    const drawGrid = () => {
+      clear(grid);
       for (const p of players) {
         const on = draft.playerIds.has(p.id);
-        list.append(h('button', { type: 'button', class: 'chip pick', 'aria-pressed': String(on), onclick: () => {
+        grid.append(h('button', { type: 'button', class: 'pick-tile', 'aria-pressed': String(on), onclick: () => {
           if (draft.playerIds.has(p.id)) draft.playerIds.delete(p.id); else draft.playerIds.add(p.id);
-          invalidate(); drawList(); sync();
-        } }, avatar(p, 'sm'), p.name));
+          invalidate(); drawGrid(); sync();
+        } },
+          h('span', { class: 'pn', 'aria-hidden': 'true' }, on ? `P${order().indexOf(p.id) + 1}` : ''),
+          avatar(p, 'lg'), h('span', { class: 'nm' }, p.name), h('span', { class: 'ready', 'aria-hidden': 'true' }, on ? 'READY' : 'PRESS')));
       }
     };
-    drawList(); sync();
-    body.append(h('section', { class: 'card stack' },
-      h('h2', {}, 'Cine joacă în seara asta?'),
+    drawGrid(); sync();
+    body.append(
       h('div', { class: 'row' },
-        h('button', { class: 'btn small', type: 'button', onclick: () => { players.forEach((p) => draft.playerIds.add(p.id)); invalidate(); drawList(); sync(); } }, 'Toți'),
-        h('button', { class: 'btn small', type: 'button', onclick: () => { draft.playerIds.clear(); invalidate(); drawList(); sync(); } }, 'Niciunul'),
-        h('span', { class: 'muted' }, 'Aleși: ', count)),
-      list,
-      h('div', { class: 'row' }, next, h('span', { class: 'muted small' }, 'Minim 2 jucători; pentru jocuri în echipe sunt potrivite 4 sau mai mulți.'))));
+        h('button', { class: 'btn small', type: 'button', onclick: () => { players.forEach((p) => draft.playerIds.add(p.id)); invalidate(); drawGrid(); sync(); } }, 'Toți'),
+        h('button', { class: 'btn small ghost', type: 'button', onclick: () => { draft.playerIds.clear(); invalidate(); drawGrid(); sync(); } }, 'Niciunul'),
+        h('span', { class: 'label', style: { marginLeft: 'auto' } }, 'Aleși ', count)),
+      grid,
+      h('div', { class: 'actions' }, hint, h('span', { class: 'push' }, next)));
   }
 
-  // ---------- pasul 2 ----------
+  // ---------- STAGE 2: cartușul și nivelurile ----------
   function step2() {
-    const cards = h('div', { class: 'grid cols-3' });
-    const levelsBox = h('div');
-    const next = h('button', { class: 'btn primary', type: 'button', onclick: () => go(3) }, 'Continuă');
+    const carts = h('div', { class: 'carts' });
+    const levelsBox = h('div', { class: 'panel stack-sm' });
+    const next = h('button', { class: 'btn primary', type: 'button', onclick: () => go(3) }, 'Continuă', icon('play'));
     const n = draft.playerIds.size;
 
-    const drawCards = () => {
-      clear(cards);
+    const drawCarts = () => {
+      clear(carts);
       for (const g of games) {
         const off = n < g.min_players || n > g.max_players;
-        cards.append(h('button', { type: 'button', class: 'card game-card', 'aria-pressed': String(g.id === draft.gameId), onclick: () => { draft.gameId = g.id; invalidate(); drawCards(); drawLevels(); } },
-          h('div', { class: 'row' }, h('span', { class: 'emoji' }, g.emoji), h('b', {}, g.name)),
-          h('span', { class: 'muted small' }, `${g.min_players}–${g.max_players} jucători · ${g.duration} min`),
-          off && h('span', { class: 'chip', style: { color: 'var(--bad)' } }, `recomandat ${g.min_players}–${g.max_players} jucători`)));
+        carts.append(cartridge(g, {
+          pressed: g.id === draft.gameId,
+          onPick: () => { draft.gameId = g.id; invalidate(); drawCarts(); drawLevels(); },
+          extra: g.id === draft.gameId ? h('span', { class: 'insert' }, '▶ Inserted')
+            : off ? h('span', { class: 'chip', style: { color: 'var(--bad)' } }, `recomandat ${g.min_players}–${g.max_players} jucători`) : null,
+        }));
       }
     };
     const drawLevels = () => {
       clear(levelsBox);
       next.disabled = !draft.gameId;
       const g = game();
-      if (!g) { levelsBox.append(h('p', { class: 'muted' }, 'Alege un joc ca să setezi nivelul fiecărui jucător.')); return; }
-      levelsBox.append(h('h3', {}, `Nivel la ${g.name}`), h('p', { class: 'muted small' }, 'Nivelul decide cât de puternic este jucătorul la formarea echipelor. Se salvează imediat.'),
-        h('div', { class: 'stack' }, selected().map((p) => h('div', { class: 'row', style: { justifyContent: 'space-between' } },
-          h('span', { class: 'row' }, avatar(p, 'sm'), p.name),
+      if (!g) { levelsBox.append(h('p', { class: 'muted' }, 'Alege un joc, apoi setezi nivelul fiecărui jucător la el.')); return; }
+      levelsBox.append(h('h3', {}, `Nivel la ${g.name}`), h('p', { class: 'muted small' }, 'Nivelul decide cât de puternic e jucătorul la formarea echipelor. Se salvează imediat.'),
+        h('div', { class: 'level-list' }, selected().map((p) => h('div', { class: 'level-row' },
+          h('span', {}, avatar(p, 'sm'), p.name),
           segmented([1, 2, 3, 4, 5].map((v) => [v, String(v), LEVELS[v]]), p.levels[g.id] ?? 3, async (v) => {
             try { await api.setLevels(p.id, { [g.id]: v }); p.levels[g.id] = v; invalidate(); toast(`${p.name}: ${LEVELS[v]}`); }
             catch (e) { toast(e.message, 'error'); }
           }, `Nivel ${p.name}`)))));
     };
-    drawCards(); drawLevels();
-    body.append(h('section', { class: 'stack' }, h('h2', {}, 'Ce jucați?'), cards, h('div', { class: 'card' }, levelsBox),
-      h('div', { class: 'row' }, h('button', { class: 'btn', type: 'button', onclick: () => go(1) }, 'Înapoi'), next)));
+    drawCarts(); drawLevels();
+    body.append(carts, levelsBox,
+      h('div', { class: 'actions' }, h('button', { class: 'btn ghost', type: 'button', onclick: () => go(1) }, 'Înapoi'), h('span', { class: 'push' }, next)));
   }
 
-  // ---------- pasul 3 ----------
+  // ---------- STAGE 3: echipe și reguli ----------
   function step3() {
     const n = draft.playerIds.size;
     const maxTeams = Math.min(8, n);
     draft.teamCount = Math.min(Math.max(2, draft.teamCount), maxTeams);
     draft.rules = draft.rules.filter((r) => r.type !== 'team' || r.team < draft.teamCount);
 
-    const sizes = h('span', { class: 'muted' });
-    const rulesBox = h('div', { class: 'stack' });
+    const sizes = h('span', { class: 'label' });
+    const rulesBox = h('div', { class: 'stack-sm' });
     const hint = h('p', { class: 'muted small' });
     const err = h('div', { class: 'err', role: 'alert' });
     const calc = h('button', { class: 'btn primary', type: 'button' }, 'Calculează echipele');
@@ -130,13 +145,13 @@ export async function render() {
     const countSeg = h('div');
     const drawCount = () => {
       clear(countSeg).append(segmented(Array.from({ length: maxTeams - 1 }, (_, i) => [i + 2, String(i + 2)]), draft.teamCount, (v) => {
-        draft.teamCount = v; draft.rules = draft.rules.filter((r) => r.type !== 'team' || r.team < v); invalidate(); sizes.textContent = `Dimensiuni: ${sizeText()}`; drawRules(); drawHint(); drawRuleForm();
+        draft.teamCount = v; draft.rules = draft.rules.filter((r) => r.type !== 'team' || r.team < v); invalidate(); sizes.textContent = `Dimensiuni ${sizeText()}`; drawRules(); drawHint(); drawRuleForm();
       }, 'Număr de echipe'));
-      sizes.textContent = `Dimensiuni: ${sizeText()}`;
+      sizes.textContent = `Dimensiuni ${sizeText()}`;
     };
     const drawHint = () => { hint.textContent = draft.rules.length
       ? 'Cu reguli stricte rulează Branch and Bound: caută cea mai echilibrată împărțire care le respectă pe toate.'
-      : 'Fără reguli rulează Bitmask DP: se verifică toate împărțirile posibile și se alege cea mai echilibrată.'; };
+      : 'Fără reguli rulează Bitmask DP: verifică toate împărțirile posibile și o alege pe cea mai echilibrată.'; };
 
     const name = (id) => players.find((p) => p.id === id)?.name ?? '?';
     const ruleText = (r) => r.type === 'separate' ? `${name(r.a)} și ${name(r.b)} nu pot fi în aceeași echipă`
@@ -146,10 +161,10 @@ export async function render() {
       clear(rulesBox);
       if (!draft.rules.length) rulesBox.append(h('p', { class: 'muted small' }, 'Nicio regulă. Împărțirea se face doar după nivel.'));
       draft.rules.forEach((r, i) => rulesBox.append(h('div', { class: 'rule' }, h('span', { class: 'grow' }, ruleText(r)),
-        h('button', { class: 'x', type: 'button', 'aria-label': 'Șterge regula', onclick: () => { draft.rules.splice(i, 1); invalidate(); drawRules(); drawHint(); } }, '✕'))));
+        h('button', { class: 'x', type: 'button', 'aria-label': `Șterge regula: ${ruleText(r)}`, onclick: () => { draft.rules.splice(i, 1); invalidate(); drawRules(); drawHint(); } }, '✕'))));
     }
 
-    const ruleForm = h('div', { class: 'row' });
+    const ruleForm = h('div', { class: 'row tight' });
     function drawRuleForm() {
       clear(ruleForm);
       const sel = selected();
@@ -163,11 +178,10 @@ export async function render() {
         err.textContent = '';
         const rule = type.value === 'team' ? { type: 'team', a: Number(a.value), team: Number(t.value) } : { type: type.value, a: Number(a.value), b: Number(b.value) };
         if (rule.type !== 'team' && rule.a === rule.b) { err.textContent = 'Alege doi jucători diferiți.'; return; }
-        const dup = draft.rules.some((r) => JSON.stringify(r) === JSON.stringify(rule));
-        if (dup) { err.textContent = 'Regula există deja.'; return; }
+        if (draft.rules.some((r) => JSON.stringify(r) === JSON.stringify(rule))) { err.textContent = 'Regula există deja.'; return; }
         draft.rules.push(rule); invalidate(); drawRules(); drawHint();
-      } }, 'Adaugă regula'));
-      ruleForm.querySelectorAll('select').forEach((s) => { s.style.flex = '1 1 150px'; });
+      } }, icon('plus'), 'Adaugă regula'));
+      ruleForm.querySelectorAll('select').forEach((s) => { s.style.flex = '1 1 160px'; s.style.width = 'auto'; });
     }
 
     calc.addEventListener('click', async () => {
@@ -181,43 +195,47 @@ export async function render() {
     });
 
     drawCount(); drawRules(); drawHint(); drawRuleForm();
-    body.append(h('section', { class: 'stack' }, h('h2', {}, 'Echipe și reguli'),
-      h('div', { class: 'card stack' }, h('h3', {}, 'Câte echipe?'), countSeg, sizes),
-      h('div', { class: 'card stack' }, h('h3', {}, 'Reguli stricte (opțional)'),
-        h('p', { class: 'muted small' }, 'Folosește-le pentru perechi care se știu prea bine, frați, rivali sau cuplu care joacă împreună.'), rulesBox, ruleForm, hint),
-      h('div', { class: 'card' }, h('div', { class: 'field' }, 'Câte manșe? (de câte ori joacă fiecare echipă cu fiecare)',
-        segmented([1, 2, 3, 4, 5].map((v) => [v, String(v)]), draft.cycles, (v) => { draft.cycles = v; }, 'Manșe'))),
+    body.append(
+      h('div', { class: 'grid cols-2', style: { alignItems: 'start' } },
+        h('section', { class: 'panel stack-sm' }, h('h3', {}, 'Câte echipe?'), countSeg, sizes),
+        h('section', { class: 'panel stack-sm' }, h('h3', {}, 'Câte manșe?'), h('p', { class: 'muted small' }, 'De câte ori joacă fiecare echipă cu fiecare.'),
+          segmented([1, 2, 3, 4, 5].map((v) => [v, String(v)]), draft.cycles, (v) => { draft.cycles = v; }, 'Manșe'))),
+      h('section', { class: 'panel stack-sm' }, h('h3', {}, 'Reguli stricte (opțional)'),
+        h('p', { class: 'muted small' }, 'Pentru frați, rivali sau cupluri care vor să joace împreună.'), rulesBox, ruleForm, hint),
       err,
-      h('div', { class: 'row' }, h('button', { class: 'btn', type: 'button', onclick: () => go(2) }, 'Înapoi'), calc)));
+      h('div', { class: 'actions' }, h('button', { class: 'btn ghost', type: 'button', onclick: () => go(2) }, 'Înapoi'), h('span', { class: 'push' }, calc)));
   }
 
-  // ---------- pasul 4 ----------
+  // ---------- STAGE 4: ecranul VS ----------
   function step4() {
     const p = draft.proposal;
     if (!p) { go(3); return; }
     const g = game();
     const gain = p.baseline > 0 ? Math.round((1 - p.deviation / p.baseline) * 100) : 0;
     const err = h('div', { class: 'err', role: 'alert' });
-    const start = h('button', { class: 'btn primary', type: 'button' }, 'Începe seara');
+    const start = h('button', { class: 'btn primary huge', type: 'button' }, icon('play'), 'Începe seara');
+    const duel = p.teams.length === 2;
 
-    const teamsGrid = h('div', { class: 'grid cols-2' });
+    const stage = h('div', { class: `vs-stage ${duel ? 'duel' : 'many'}` });
+    const teamCard = (t, i) => {
+      const input = h('input', { type: 'text', value: draft.names[i] ?? `Echipa ${i + 1}`, maxlength: 28, 'aria-label': `Numele echipei ${i + 1}`, oninput: (e) => { draft.names[i] = e.target.value; } });
+      return h('article', { class: 'panel team', style: { '--tc': t.color, '--i': i, '--from': duel && i === 1 ? '48px' : '-48px' } },
+        h('div', { class: 'team-banner' }, input,
+          h('span', { class: 'power' }, 'Putere ', h('b', {}, t.sum), ' · medie ', h('b', {}, t.avg), ` · ${t.players.length} jucători`)),
+        t.players.map((pl, j) => h('div', { class: 'member', style: { '--i': i, '--j': j } }, avatar(pl, 'sm'),
+          h('div', { style: { minWidth: 0 } }, h('div', { class: 'who' }, pl.name), h('div', { class: 'role' }, pl.role)),
+          h('div', { style: { display: 'grid', justifyItems: 'end', gap: '4px' } }, pips(pl.level), h('span', { class: 'aff' }, `potrivire ${pl.affinity}%`)))));
+    };
     const drawTeams = () => {
-      clear(teamsGrid);
-      p.teams.forEach((t, i) => {
-        const input = h('input', { type: 'text', value: draft.names[i] ?? `Echipa ${i + 1}`, maxlength: 28, 'aria-label': `Numele echipei ${i + 1}`, oninput: (e) => { draft.names[i] = e.target.value; } });
-        teamsGrid.append(h('article', { class: 'card team', style: { '--tc': t.color } },
-          h('div', { class: 'team-head' }, input),
-          h('p', { class: 'muted small' }, `Putere totală ${t.sum} · medie ${t.avg} · ${t.players.length} jucători`),
-          t.players.map((pl) => h('div', { class: 'member' }, avatar(pl, 'sm'),
-            h('div', { class: 'who' }, pl.name, h('div', { class: 'role' }, pl.role, ` · potrivire ${pl.affinity}%`)),
-            h('span', { class: 'lv', title: LEVELS[pl.level] }, stars(pl.level))))));
-      });
+      clear(stage);
+      if (duel) stage.append(teamCard(p.teams[0], 0), h('div', { class: 'vs-mark', 'aria-hidden': 'true' }, 'VS'), teamCard(p.teams[1], 1));
+      else stage.append(h('div', { class: 'vs-mark', 'aria-hidden': 'true' }, 'VS'), ...p.teams.map(teamCard));
     };
     drawTeams();
 
     start.addEventListener('click', async () => {
       err.textContent = '';
-      start.disabled = true;
+      formToggle(start, true);
       try {
         const s = await api.createSession({
           gameId: g.id, method: p.method, cycles: draft.cycles,
@@ -225,31 +243,34 @@ export async function render() {
         });
         draft.proposal = null; draft.names = []; draft.step = 1;
         location.hash = `#/session/${s.id}`;
-      } catch (e) { err.textContent = e.message; start.disabled = false; }
+      } catch (e) { err.textContent = e.message; formToggle(start, false); }
     });
 
     const st = p.stats;
-    body.append(h('section', { class: 'stack' },
-      h('div', { class: 'row' }, h('h2', { style: { margin: 0 } }, `${g.emoji} ${g.name}`), h('span', { class: 'chip accent' }, p.algorithm.name)),
-      h('div', { class: 'card' }, h('div', { class: 'compare' },
-        h('div', {}, h('span', { class: 'muted small' }, 'Diferență între echipe'), h('b', { class: 'good' }, p.deviation)),
-        h('div', {}, h('span', { class: 'muted small' }, 'La întâmplare, în medie'), h('b', { class: 'bad' }, p.baseline)),
-        h('div', {}, h('span', { class: 'muted small' }, 'Mai echilibrat cu'), h('b', {}, `${Math.max(0, gain)}%`)),
-        h('div', {}, h('span', { class: 'muted small' }, 'Timp de calcul'), h('b', {}, `${st.ms} ms`))),
-        h('details', { style: { marginTop: '12px' } }, h('summary', { class: 'muted small', style: { cursor: 'pointer' } }, 'Detalii despre calcul'),
-          h('dl', { class: 'kv', style: { marginTop: '8px' } },
+    const big = (cls, value, fmt) => { const b = h('b', { class: cls }, '0'); countUp(b, value, { delay: 700, format: fmt }); return b; };
+    body.append(
+      h('div', { class: 'vs-head' }, h('span', { class: 'chip led hot' }, `${g.emoji} ${g.name}`), h('span', { class: 'chip led' }, p.algorithm.name),
+        h('span', { class: 'grow' }), h('button', { class: 'btn small', type: 'button', onclick: async () => { try { draft.names = (await api.teamNames(p.teams.length)).names; drawTeams(); } catch (e) { toast(e.message, 'error'); } } }, 'Alte nume')),
+      h('p', { class: 'muted small' }, 'Numele echipelor se pot scrie direct în bannere.'),
+      stage,
+      h('section', { class: 'panel stack-sm' },
+        h('div', { class: 'compare' },
+          h('div', {}, h('span', { class: 'label' }, 'Diferență'), big('good', p.deviation)),
+          h('div', {}, h('span', { class: 'label' }, 'La întâmplare'), big('bad', p.baseline)),
+          h('div', {}, h('span', { class: 'label' }, 'Mai echilibrat'), big('', Math.max(0, gain), (n) => `${n}%`)),
+          h('div', {}, h('span', { class: 'label' }, 'Calcul'), big('', st.ms, (n) => `${n} ms`))),
+        h('details', {}, h('summary', { class: 'muted small' }, 'Detalii despre calcul'),
+          h('dl', { class: 'kv' },
             h('dt', {}, 'Algoritm echipe'), h('dd', {}, `${p.algorithm.name}, ${p.algorithm.complexity}`),
             st.states != null && [h('dt', {}, 'Stări memorate'), h('dd', {}, st.states.toLocaleString('ro'))],
             st.nodes != null && [h('dt', {}, 'Noduri explorate'), h('dd', {}, st.nodes.toLocaleString('ro'))],
             st.pruned != null && [h('dt', {}, 'Ramuri tăiate'), h('dd', {}, st.pruned.toLocaleString('ro'))],
             h('dt', {}, 'Roluri'), h('dd', {}, `Kuhn-Munkres, ${st.roleSteps} pași, afinitate totală ${st.roleAffinity}`)))),
-      h('div', { class: 'row' }, h('h3', { style: { margin: 0 } }, 'Numele echipelor'),
-        h('button', { class: 'btn small', type: 'button', onclick: async () => { try { draft.names = (await api.teamNames(p.teams.length)).names; drawTeams(); } catch (e) { toast(e.message, 'error'); } } }, 'Alte nume'),
-        h('span', { class: 'muted small' }, 'Le poți și scrie direct în carduri.')),
-      teamsGrid, err,
-      h('div', { class: 'row' }, h('button', { class: 'btn', type: 'button', onclick: () => go(3) }, 'Înapoi la reguli'), start)));
+      err,
+      h('div', { class: 'actions' }, h('button', { class: 'btn ghost', type: 'button', onclick: () => go(3) }, 'Înapoi la reguli'), h('span', { class: 'push' }, start)));
   }
 
   draw();
+  stagger(body, 6);
   return root;
 }

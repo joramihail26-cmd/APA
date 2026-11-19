@@ -1,56 +1,108 @@
 import { api } from '../api.js';
-import { h, empty, toast } from '../ui.js';
+import { h, toast, icon } from '../ui.js';
+import { decrypt, countUp, tubeLetters } from '../fx/text.js';
+import { magnet } from '../fx/pointer.js';
+import { reduced } from '../fx/motion.js';
+
+const pad = (n) => String(n).padStart(2, '0');
 
 export async function render() {
-  const [players, games, sessions] = await Promise.all([api.players(), api.games(), api.sessions()]);
+  const [players, games, sessions, stats] = await Promise.all([api.players(), api.games(), api.sessions(), api.stats()]);
   const active = sessions.filter((s) => s.status === 'active');
   const finished = sessions.filter((s) => s.status === 'finished');
+  const ready = players.length >= 4;
 
-  const root = h('div', { class: 'stack' });
-  root.append(h('div', { class: 'page-head' },
-    h('div', {}, h('h1', {}, 'Seara de jocnpm'),
-      h('p', { class: 'muted' }, 'Adaugi prietenii, alegi jocul, iar aplicația împarte echipele și rolurile, apoi ține scorul.')),
-    h('a', { class: 'btn primary', href: '#/new' }, 'Începe o seară nouă')));
+  // ---------- attract screen ----------
+  const l1 = h('span', { class: 'line' }); const l2 = h('span', { class: 'line volt' });
+  tubeLetters(l1, 'GAMENIGHT', 120); tubeLetters(l2, 'MASTER', 720);
+  const sign = h('h1', { class: 'sign', 'aria-label': 'GameNight Master' }, l1, l2);
+  const tagline = h('p', { class: 'tagline' });
 
-  root.append(h('div', { class: 'grid cols-3' },
-    stat(players.length, 'jucători'), stat(games.length, 'jocuri disponibile'), stat(finished.length, 'seri încheiate')));
+  const start = h('a', { class: 'btn primary huge', href: ready ? '#/new' : '#/players' },
+    icon('play'), ready ? 'Press start' : 'Adaugă jucători');
+  const demo = !ready && h('button', { class: 'btn', type: 'button', onclick: async (e) => {
+    e.currentTarget.disabled = true;
+    try { const r = await api.demo(); toast(`Am adăugat ${r.added} jucători de probă`); location.hash = '#/players'; }
+    catch (err) { toast(err.message, 'error'); e.currentTarget.disabled = false; }
+  } }, 'Încarcă 8 jucători de probă');
 
-  if (players.length < 4) {
-    root.append(empty('👥', 'Ai nevoie de cel puțin 4 jucători',
-      'Adaugă prietenii unul câte unul sau încarcă un grup de probă ca să vezi cum funcționează.',
-      h('a', { class: 'btn primary', href: '#/players' }, 'Adaugă jucători'),
-      h('button', { class: 'btn', type: 'button', onclick: async () => {
-        try { const r = await api.demo(); toast(`Am adăugat ${r.added} jucători`); location.hash = '#/players'; }
-        catch (e) { toast(e.message, 'error'); }
-      } }, 'Încarcă 8 jucători de probă')));
+  const statEl = (n, label) => { const b = h('b', {}, '00'); countUp(b, n, { delay: 900, duration: 1100, format: pad }); return h('span', {}, b, label); };
+
+  const copy = h('div', { class: 'attract-copy' },
+    h('span', { class: 'eyebrow' }, ready ? 'Players ready' : 'Insert coin'),
+    sign, tagline,
+    h('div', { class: 'attract-actions' }, h('span', { class: 'star' }, magnet(start)), demo),
+    h('p', { class: 'attract-stats' }, statEl(players.length, 'jucători'), statEl(games.length, 'jocuri'), statEl(finished.length, 'seri jucate')),
+    !ready && h('p', { class: 'muted small', style: { maxWidth: '46ch' } }, `Pentru echipe ai nevoie de cel puțin 4 jucători. Acum ai ${players.length}.`));
+
+  // tabela HIGH SCORES: clasamentul real sau un tabel demonstrativ
+  const top = stats.players.filter((p) => p.played > 0).slice(0, 5);
+  const rows = top.length
+    ? top.map((p, i) => ({ rk: `${i + 1}`, nm: p.name, sc: pad(p.wins) }))
+    : (players.length ? players.slice(0, 5).map((p, i) => ({ rk: `${i + 1}`, nm: p.name, sc: '--' })) : ['ANA', 'MIHAI', 'IOANA', 'VLAD', 'SARA'].map((n, i) => ({ rk: `${i + 1}`, nm: n, sc: '--' })));
+  const list = h('ol', { class: 'hs-rows' }, rows.map((r) => h('li', { class: 'hs-row' }, h('span', { class: 'rk' }, r.rk), h('span', { class: 'nm' }, r.nm), h('span', { class: 'sc' }, r.sc))));
+  const cab = h('section', { class: 'hiscore', 'aria-labelledby': 'hs-title' },
+    h('div', { class: 'panel hot hiscore-cab' },
+      h('h2', { id: 'hs-title' }, 'High scores'),
+      list,
+      h('p', { class: 'hs-foot' }, top.length ? 'Victorii în serile încheiate' : 'Încă nu s-a jucat nicio seară', ' ', h('span', { class: 'blink', 'aria-hidden': 'true' }, '▮'))));
+
+  // ticker pe telefon (aceleași date, o singură bandă)
+  const items = rows.map((r) => h('span', {}, h('span', { class: 'k' }, `${r.rk}. `), r.nm, h('b', {}, r.sc)));
+  const ticker = h('div', { class: 'ticker', role: 'marquee', 'aria-label': 'High scores' },
+    h('div', { class: 'ticker-track' }, items, items.map((n) => { const c = n.cloneNode(true); c.setAttribute('aria-hidden', 'true'); return c; })));
+
+  const attract = h('section', { class: 'attract', 'aria-label': 'Ecranul de start' },
+    copy, cab,
+    h('div', { class: 'horizon', 'aria-hidden': 'true' }),
+    h('div', { class: 'floor', 'aria-hidden': 'true' }, h('div', { class: 'floor-grid' })));
+
+  // cursorul care trece prin tabela HIGH SCORES, ca la automatele în modul demo
+  if (!reduced()) {
+    let i = 0;
+    const lis = [...list.children];
+    const timer = setInterval(() => {
+      if (!list.isConnected) { clearInterval(timer); return; }
+      lis.forEach((li, k) => li.classList.toggle('cursor', k === i));
+      i = (i + 1) % lis.length;
+    }, 1400);
   }
+  decrypt(tagline, 'Echipe echilibrate la fix, roluri potrivite și un scoreboard care se aprinde la fiecare punct.', { delay: 1100, speed: 22, perChar: 2 });
 
+  // ---------- sub hero ----------
+  const lower = h('div', { class: 'home-lower' });
+  const cont = h('section', { class: 'continue', 'aria-labelledby': 'cont-title' },
+    h('h2', { id: 'cont-title', class: 'label', style: { color: 'var(--neon)' } }, active.length ? 'Continue?' : 'Ultima seară'));
   if (active.length) {
-    root.append(h('section', {}, h('h2', {}, 'Seri în desfășurare'),
-      h('div', { class: 'grid cols-2' }, active.map((s) => sessionCard(s)))));
+    cont.append(...active.map((s) => {
+      const done = s.matches.filter((m) => m.done).length;
+      return h('a', { class: 'panel continue-card', href: `#/session/${s.id}` },
+        h('span', { class: 'emoji', 'aria-hidden': 'true' }, s.game.emoji),
+        h('span', {}, h('b', {}, s.game.name), h('span', { class: 'muted small' }, `${s.teams.map((t) => t.name).join(' · ')} · ${done} din ${s.matches.length} meciuri`)),
+        h('span', { class: 'go', 'aria-hidden': 'true' }, '▶'));
+    }));
+  } else if (finished[0]) {
+    const s = finished[0];
+    cont.append(h('a', { class: 'panel continue-card', href: `#/session/${s.id}` },
+      h('span', { class: 'emoji', 'aria-hidden': 'true' }, s.game.emoji),
+      h('span', {}, h('b', {}, s.game.name), h('span', { class: 'muted small' }, s.result?.message ?? '')),
+      h('span', { class: 'go', 'aria-hidden': 'true' }, '▶')));
+  } else {
+    cont.append(h('p', { class: 'muted' }, 'Nicio seară încă. Prima începe cu PRESS START.'));
   }
 
-  root.append(h('section', {}, h('h2', {}, 'Cum se folosesc algoritmii'),
-    h('div', { class: 'grid cols-3' },
-      info('Echipe echilibrate', 'Bitmask DP verifică toate împărțirile posibile și o alege pe cea cu cea mai mică diferență de putere între echipe.', '#/new'),
-      info('Reguli stricte', 'Dacă doi prieteni trebuie separați sau puși împreună, Branch and Bound găsește cea mai bună împărțire care respectă regulile.', '#/new'),
-      info('Roluri', 'Algoritmul ungar potrivește fiecare jucător cu rolul pe care îl face cel mai bine în jocul ales.', '#/algorithms'),
-      info('Planul serii', 'Rucsacul cu programare dinamică alege jocurile care încap în timpul tău și plac cel mai mult grupului.', '#/planner'),
-      info('Meciuri', 'Metoda cercului pune fiecare echipă să joace cu fiecare, fără suprapuneri.', '#/algorithms'),
-      info('Teste', 'Fiecare algoritm este verificat automat cu o soluție de forță brută.', '#/algorithms'))));
-  return root;
+  const how = h('section', { 'aria-labelledby': 'how-title' },
+    h('h2', { id: 'how-title', class: 'label', style: { color: 'var(--neon)', marginBottom: 'var(--s-2)' } }, 'How to play'),
+    h('ol', { class: 'howto' },
+      step('Echipe echilibrate', 'Bitmask DP verifică toate împărțirile și o alege pe cea cu cea mai mică diferență de putere.', '#/new'),
+      step('Reguli stricte', 'Doi prieteni separați sau împreună? Branch and Bound găsește cea mai bună împărțire care le respectă.', '#/new'),
+      step('Roluri', 'Algoritmul ungar pune fiecare jucător pe rolul pe care îl face cel mai bine.', '#/algorithms'),
+      step('Planul serii', 'Rucsacul alege jocurile care încap în timpul vostru și plac cel mai mult.', '#/planner'),
+      step('Meciuri', 'Metoda cercului face ca fiecare echipă să joace cu fiecare, fără suprapuneri.', '#/algorithms'),
+      step('Teste', 'Fiecare algoritm e verificat automat cu o soluție de forță brută.', '#/algorithms')));
+  lower.append(cont, how);
+
+  return h('div', {}, attract, ticker, lower);
 }
 
-const stat = (n, label) => h('div', { class: 'card stat' }, h('b', {}, n), h('span', {}, label));
-
-function info(title, text, href) {
-  return h('a', { class: 'card flat', href, style: { textDecoration: 'none' } }, h('h3', {}, title), h('p', { class: 'muted small' }, text));
-}
-
-function sessionCard(s) {
-  const done = s.matches.filter((m) => m.done).length;
-  return h('a', { class: 'card', href: `#/session/${s.id}`, style: { textDecoration: 'none' } },
-    h('h3', {}, `${s.game.emoji} ${s.game.name}`),
-    h('p', { class: 'muted' }, s.teams.map((t) => t.name).join(' · ')),
-    h('span', { class: 'chip accent' }, `${done} din ${s.matches.length} meciuri jucate`));
-}
+const step = (title, text, href) => h('li', {}, h('div', {}, h('b', {}, h('a', { href }, title)), h('span', { class: 'muted small' }, text)));

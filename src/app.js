@@ -105,8 +105,11 @@ function createApp(db = openDatabase()) {
 
   // ---------- fișiere statice ----------
   app.use(express.static(path.join(__dirname, '..', 'public'), {
-    maxAge: '1h',
-    setHeaders: (res, file) => { if (file.endsWith('.html')) res.setHeader('Cache-Control', 'no-cache'); },
+    // CSS și modulele JS se revalidează (ETag), ca să nu se amestece versiuni vechi cu noi după o actualizare.
+    // Fonturile nu se schimbă, deci pot sta în cache o zi.
+    setHeaders: (res, file) => {
+      res.setHeader('Cache-Control', file.endsWith('.woff2') ? 'public, max-age=86400' : 'no-cache');
+    },
   }));
 
   app.use('/api', (req, res) => res.status(404).json({ error: 'Adresa nu există' }));
